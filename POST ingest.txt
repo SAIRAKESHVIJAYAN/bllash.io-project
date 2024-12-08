@@ -1,0 +1,56 @@
+POST /ingest
+Body: {"file_path": "path/to/json"}
+Response: {"status": "success", "message": "Data ingested"}
+
+
+
+
+
+POST /query
+Body: {"question": "List down the Top 5 invoices for Project X"}
+Response: {
+    "answer": [
+        {"Invoice ID": "58820", "Contractor": "John Doe", "Vendor": "ABC Ltd", "Amount": 50000},
+        ...
+    ]
+}
+
+
+
+from flask import Flask, request, jsonify
+import sqlite3
+import openai
+
+app = Flask(__name__)
+
+# Database connection
+def connect_db():
+    conn = sqlite3.connect("insights.db")
+    return conn
+
+@app.route("/query", methods=["POST"])
+def query_data():
+    data = request.json
+    question = data.get("question")
+    
+    # Example: Identify intent and handle query
+    if "Top 5 invoices" in question:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT invoice_id, contractor_name, vendor_name, amount 
+            FROM invoices 
+            ORDER BY amount DESC 
+            LIMIT 5
+        """)
+        results = cursor.fetchall()
+        conn.close()
+        
+        # Generate response
+        response = [{"Invoice ID": row[0], "Contractor": row[1], "Vendor": row[2], "Amount": row[3]} for row in results]
+        return jsonify({"answer": response})
+    else:
+        return jsonify({"error": "Question not recognized"}), 400
+
+if __name__ == "__main__":
+    app.run(debug=True)
